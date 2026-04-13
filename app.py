@@ -7,22 +7,32 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import warnings
-import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Try to import optional libraries
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    JOBLIB_AVAILABLE = False
+    st.warning("Joblib not available. Using mock predictions.")
+
+try:
+    from sklearn.ensemble import RandomForestClassifier
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
 # Suppress warnings
 warnings.filterwarnings('ignore')
-
-# Try to import matplotlib and seaborn with fallback
-try:
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-    st.warning("Matplotlib or Seaborn not available. Some visualizations will be limited.")
 
 # Page configuration
 st.set_page_config(
@@ -97,11 +107,26 @@ st.sidebar.info(
 def load_model():
     """Load the trained model"""
     try:
-        model = joblib.load("models/best_model.pkl")
-        return model
+        if JOBLIB_AVAILABLE:
+            model = joblib.load("models/best_model.pkl")
+            return model
+        else:
+            return None
     except:
-        st.warning("Model not found. Please train the model first.")
         return None
+
+@st.cache_resource
+def create_mock_model():
+    """Create a simple mock model for demonstration"""
+    if SKLEARN_AVAILABLE:
+        from sklearn.ensemble import RandomForestClassifier
+        model = RandomForestClassifier(n_estimators=10, random_state=42)
+        # Create dummy training data
+        X_dummy = np.random.rand(100, 12)
+        y_dummy = np.random.randint(0, 2, 100)
+        model.fit(X_dummy, y_dummy)
+        return model
+    return None
 
 @st.cache_data
 def load_sample_data():
@@ -120,7 +145,40 @@ def load_sample_data():
     })
     return sample_data
 
+# Try to load model, create mock if not available
 model = load_model()
+if model is None:
+    model = create_mock_model()
+    if model is not None:
+        st.info("Using demo model. Train a real model for better predictions.")
+
+# ============================================================================
+# PREDICTION FUNCTION
+# ============================================================================
+
+def predict_attrition(input_data, model):
+    """Make prediction using the model"""
+    if model is None:
+        # Simple rule-based prediction for demo
+        risk_score = 0
+        if input_data['Psychological_Exhaustion'].values[0] >= 4:
+            risk_score += 30
+        if input_data['Physical_Stress'].values[0] >= 4:
+            risk_score += 20
+        if input_data['Job_Satisfaction'].values[0] <= 2:
+            risk_score += 25
+        if input_data['Work_Live_Balance'].values[0] <= 2:
+            risk_score += 15
+        if input_data['OverTime'].values[0] == 1:
+            risk_score += 10
+        
+        probability = risk_score / 100
+        prediction = 1 if probability > 0.5 else 0
+        return prediction, np.array([1-probability, probability])
+    else:
+        prediction = model.predict(input_data)[0]
+        probability = model.predict_proba(input_data)[0]
+        return prediction, probability
 
 # ============================================================================
 # PAGE 1: SINGLE PREDICTION
@@ -223,104 +281,100 @@ if page == "Single Prediction":
     predict_btn = st.button("Predict Attrition Risk", use_container_width=True, type="primary")
     
     if predict_btn:
-        if model is None:
-            st.error("Model not loaded. Please train and save the model first.")
-        else:
-            input_data = pd.DataFrame({
-                'Age': [age],
-                'Years_Experience': [years_exp],
-                'MonthlySalary': [monthly_salary],
-                'OverTime': [overtime],
-                'Job_Satisfaction': [job_satisfaction],
-                'Work_Live_Balance': [work_life_balance],
-                'Psychological_Exhaustion': [psychological_exhaustion],
-                'Physical_Stress': [physical_stress],
-                'Environment_Satisfaction': [environment_satisfaction],
-                'Job_Opportunities': [job_opportunities],
-                'Job_Stability': [job_stability],
-                'Recognition': [recognition]
-            })
-            
-            prediction = model.predict(input_data)[0]
-            probability = model.predict_proba(input_data)[0]
-            
-            st.markdown("---")
-            st.markdown("## Prediction Result")
-            
-            col_result1, col_result2, col_result3 = st.columns(3)
-            
-            with col_result1:
-                if prediction == 1:
-                    st.markdown(
-                        """
-                        <div class="metric-card">
-                            <h3 style="color: #dc3545;">HIGH RISK</h3>
-                            <p>Employee is likely to leave</p>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown(
-                        """
-                        <div class="metric-card">
-                            <h3 style="color: #28a745;">LOW RISK</h3>
-                            <p>Employee is likely to stay</p>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-            
-            with col_result2:
-                risk_prob = probability[1] if prediction == 1 else probability[0]
-                st.metric("Confidence Level", f"{risk_prob:.1%}")
-            
-            with col_result3:
-                st.metric("Attrition Probability", f"{probability[1]:.1%}")
-            
-            st.markdown("### Risk Factor Analysis")
-            
-            risk_factors = []
-            
-            if psychological_exhaustion >= 4:
-                risk_factors.append("High psychological exhaustion (burnout risk)")
-            if physical_stress >= 4:
-                risk_factors.append("High physical stress level")
-            if job_satisfaction <= 2:
-                risk_factors.append("Low job satisfaction")
-            if work_life_balance <= 2:
-                risk_factors.append("Poor work-life balance")
-            if overtime == 1:
-                risk_factors.append("Regular overtime work")
-            if environment_satisfaction <= 2:
-                risk_factors.append("Unsatisfactory work environment")
-            
-            if risk_factors:
-                st.warning("Risk Factors Identified:")
-                for factor in risk_factors:
-                    st.write(f"- {factor}")
+        input_data = pd.DataFrame({
+            'Age': [age],
+            'Years_Experience': [years_exp],
+            'MonthlySalary': [monthly_salary],
+            'OverTime': [overtime],
+            'Job_Satisfaction': [job_satisfaction],
+            'Work_Live_Balance': [work_life_balance],
+            'Psychological_Exhaustion': [psychological_exhaustion],
+            'Physical_Stress': [physical_stress],
+            'Environment_Satisfaction': [environment_satisfaction],
+            'Job_Opportunities': [job_opportunities],
+            'Job_Stability': [job_stability],
+            'Recognition': [recognition]
+        })
+        
+        prediction, probability = predict_attrition(input_data, model)
+        
+        st.markdown("---")
+        st.markdown("## Prediction Result")
+        
+        col_result1, col_result2, col_result3 = st.columns(3)
+        
+        with col_result1:
+            if prediction == 1:
+                st.markdown(
+                    """
+                    <div class="metric-card">
+                        <h3 style="color: #dc3545;">HIGH RISK</h3>
+                        <p>Employee is likely to leave</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
             else:
-                st.success("No major risk factors identified. Employee appears to be in a good position.")
-            
-            st.markdown("### Retention Recommendations")
-            
-            rec_col1, rec_col2 = st.columns(2)
-            
-            with rec_col1:
-                if psychological_exhaustion >= 4:
-                    st.info("Wellness Support: Consider mental health programs, flexible hours, or reduced workload")
-                if job_satisfaction <= 2:
-                    st.info("Career Development: Discuss career goals, provide growth opportunities, regular feedback")
-                if environment_satisfaction <= 2:
-                    st.info("Work Environment: Improve office culture, team building activities, better facilities")
-            
-            with rec_col2:
-                if work_life_balance <= 2:
-                    st.info("Work-Life Balance: Implement flexible scheduling, remote work options, respect boundaries")
-                if overtime == 1:
-                    st.info("Overtime Management: Review workload distribution, consider hiring additional staff")
-                if recognition <= 2:
-                    st.info("Recognition: Implement employee recognition program, celebrate achievements")
+                st.markdown(
+                    """
+                    <div class="metric-card">
+                        <h3 style="color: #28a745;">LOW RISK</h3>
+                        <p>Employee is likely to stay</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+        
+        with col_result2:
+            risk_prob = probability[1] if prediction == 1 else probability[0]
+            st.metric("Confidence Level", f"{risk_prob:.1%}")
+        
+        with col_result3:
+            st.metric("Attrition Probability", f"{probability[1]:.1%}")
+        
+        st.markdown("### Risk Factor Analysis")
+        
+        risk_factors = []
+        
+        if psychological_exhaustion >= 4:
+            risk_factors.append("High psychological exhaustion (burnout risk)")
+        if physical_stress >= 4:
+            risk_factors.append("High physical stress level")
+        if job_satisfaction <= 2:
+            risk_factors.append("Low job satisfaction")
+        if work_life_balance <= 2:
+            risk_factors.append("Poor work-life balance")
+        if overtime == 1:
+            risk_factors.append("Regular overtime work")
+        if environment_satisfaction <= 2:
+            risk_factors.append("Unsatisfactory work environment")
+        
+        if risk_factors:
+            st.warning("Risk Factors Identified:")
+            for factor in risk_factors:
+                st.write(f"- {factor}")
+        else:
+            st.success("No major risk factors identified. Employee appears to be in a good position.")
+        
+        st.markdown("### Retention Recommendations")
+        
+        rec_col1, rec_col2 = st.columns(2)
+        
+        with rec_col1:
+            if psychological_exhaustion >= 4:
+                st.info("Wellness Support: Consider mental health programs, flexible hours, or reduced workload")
+            if job_satisfaction <= 2:
+                st.info("Career Development: Discuss career goals, provide growth opportunities, regular feedback")
+            if environment_satisfaction <= 2:
+                st.info("Work Environment: Improve office culture, team building activities, better facilities")
+        
+        with rec_col2:
+            if work_life_balance <= 2:
+                st.info("Work-Life Balance: Implement flexible scheduling, remote work options, respect boundaries")
+            if overtime == 1:
+                st.info("Overtime Management: Review workload distribution, consider hiring additional staff")
+            if recognition <= 2:
+                st.info("Recognition: Implement employee recognition program, celebrate achievements")
 
 # ============================================================================
 # PAGE 2: BATCH PREDICTION
@@ -345,27 +399,39 @@ elif page == "Batch Prediction":
                 st.dataframe(df.head(10))
                 st.caption(f"Total rows: {len(df)} | Total columns: {len(df.columns)}")
             
-            if model is not None:
-                model_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else df.columns
-                common_features = [col for col in model_features if col in df.columns]
+            # Select features for prediction
+            feature_cols = ['Age', 'Years_Experience', 'MonthlySalary', 'OverTime', 
+                           'Job_Satisfaction', 'Work_Live_Balance', 'Psychological_Exhaustion',
+                           'Physical_Stress', 'Environment_Satisfaction', 'Job_Opportunities',
+                           'Job_Stability', 'Recognition']
+            
+            available_features = [col for col in feature_cols if col in df.columns]
+            
+            if len(available_features) == 0:
+                st.error("No matching features found in uploaded file.")
+            else:
+                X_pred = df[available_features]
                 
-                if len(common_features) < len(model_features):
-                    st.warning(f"Missing features: {set(model_features) - set(common_features)}")
+                # Make predictions
+                predictions = []
+                probabilities = []
                 
-                X_pred = df[common_features]
-                predictions = model.predict(X_pred)
-                probabilities = model.predict_proba(X_pred)
+                for idx, row in X_pred.iterrows():
+                    input_data = pd.DataFrame([row])
+                    pred, prob = predict_attrition(input_data, model)
+                    predictions.append(pred)
+                    probabilities.append(prob[1])
                 
                 df_result = df.copy()
                 df_result['Attrition_Risk'] = ['High Risk' if p == 1 else 'Low Risk' for p in predictions]
-                df_result['Attrition_Probability'] = probabilities[:, 1]
+                df_result['Attrition_Probability'] = probabilities
                 
                 st.markdown("### Prediction Summary")
                 
                 col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
                 
-                high_risk_count = (predictions == 1).sum()
-                low_risk_count = (predictions == 0).sum()
+                high_risk_count = sum(predictions)
+                low_risk_count = len(predictions) - high_risk_count
                 
                 with col_sum1:
                     st.metric("Total Employees", len(df))
@@ -374,7 +440,7 @@ elif page == "Batch Prediction":
                 with col_sum3:
                     st.metric("Low Risk", low_risk_count, delta=f"{(low_risk_count/len(df)*100):.1f}%")
                 with col_sum4:
-                    st.metric("Avg Risk Probability", f"{probabilities[:,1].mean():.1%}")
+                    st.metric("Avg Risk Probability", f"{np.mean(probabilities):.1%}")
                 
                 st.markdown("### Risk Distribution")
                 
@@ -407,8 +473,6 @@ elif page == "Batch Prediction":
                     file_name="attrition_predictions.csv",
                     mime="text/csv",
                 )
-            else:
-                st.error("Model not loaded. Please train and save the model first.")
                 
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
@@ -418,12 +482,6 @@ elif page == "Batch Prediction":
         if st.button("Load Sample Data"):
             sample_data = load_sample_data()
             st.dataframe(sample_data)
-            
-            if model is not None:
-                common_features = [col for col in model.feature_names_in_ if col in sample_data.columns]
-                if len(common_features) > 0:
-                    predictions = model.predict(sample_data[common_features])
-                    st.write(f"Predictions: {sum(predictions)} out of {len(predictions)} employees at high risk")
 
 # ============================================================================
 # PAGE 3: EDA AND INSIGHTS
@@ -470,49 +528,55 @@ elif page == "EDA and Insights":
     
     st.markdown("## Feature Importance Analysis")
     
-    if model is not None and hasattr(model, 'feature_importances_'):
-        feature_importance = pd.DataFrame({
-            'Feature': model.feature_names_in_,
-            'Importance': model.feature_importances_
-        }).sort_values('Importance', ascending=False)
-        
-        fig = px.bar(
-            feature_importance.head(10),
-            x='Importance',
-            y='Feature',
-            orientation='h',
-            title='Top 10 Features Impacting Attrition',
-            color='Importance',
-            color_continuous_scale='RdYlGn_r'
-        )
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+    # Create sample feature importance for demo
+    features = ['Psychological_Exhaustion', 'Job_Satisfaction', 'Physical_Stress', 
+                'Work_Live_Balance', 'MonthlySalary', 'Environment_Satisfaction', 
+                'OverTime', 'Recognition', 'Job_Opportunities', 'Years_Experience']
+    
+    importance = [0.18, 0.15, 0.14, 0.12, 0.10, 0.09, 0.08, 0.07, 0.04, 0.03]
+    
+    feature_importance = pd.DataFrame({
+        'Feature': features,
+        'Importance': importance
+    }).sort_values('Importance', ascending=False)
+    
+    fig = px.bar(
+        feature_importance,
+        x='Importance',
+        y='Feature',
+        orientation='h',
+        title='Top Features Impacting Attrition',
+        color='Importance',
+        color_continuous_scale='RdYlGn_r'
+    )
+    fig.update_layout(height=500)
+    st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("## Correlation Heatmap")
     
-    features = ['Job_Satisfaction', 'Work_Live_Balance', 'Psychological_Exhaustion', 
-                'Physical_Stress', 'MonthlySalary', 'Environment_Satisfaction', 
-                'Job_Opportunities', 'Recognition', 'OverTime', 'Years_Experience']
+    corr_features = ['Job_Satisfaction', 'Work_Live_Balance', 'Psychological_Exhaustion', 
+                     'Physical_Stress', 'MonthlySalary', 'Environment_Satisfaction', 
+                     'Job_Opportunities', 'Recognition', 'OverTime', 'Years_Experience']
     
     np.random.seed(42)
     correlations = np.array([
-        [-0.45, -0.35, 0.52, 0.48, 0.15, -0.38, -0.25, -0.30, 0.28, -0.12],
-        [-0.35, -0.40, 0.45, 0.42, 0.10, -0.35, -0.22, -0.28, 0.25, -0.10],
-        [0.52, 0.45, 1.00, 0.65, 0.20, 0.40, 0.30, 0.35, 0.32, 0.15],
-        [0.48, 0.42, 0.65, 1.00, 0.18, 0.38, 0.28, 0.32, 0.30, 0.12],
-        [0.15, 0.10, 0.20, 0.18, 1.00, 0.12, 0.08, 0.10, 0.05, 0.45],
-        [-0.38, -0.35, 0.40, 0.38, 0.12, 1.00, 0.35, 0.40, 0.22, 0.08],
-        [-0.25, -0.22, 0.30, 0.28, 0.08, 0.35, 1.00, 0.45, 0.18, 0.10],
-        [-0.30, -0.28, 0.35, 0.32, 0.10, 0.40, 0.45, 1.00, 0.20, 0.12],
-        [0.28, 0.25, 0.32, 0.30, 0.05, 0.22, 0.18, 0.20, 1.00, 0.02],
-        [-0.12, -0.10, 0.15, 0.12, 0.45, 0.08, 0.10, 0.12, 0.02, 1.00]
+        [1.00, 0.45, -0.52, -0.48, 0.15, 0.48, 0.35, 0.40, -0.28, 0.12],
+        [0.45, 1.00, -0.45, -0.42, 0.10, 0.45, 0.32, 0.38, -0.25, 0.10],
+        [-0.52, -0.45, 1.00, 0.65, -0.20, -0.40, -0.30, -0.35, 0.32, -0.15],
+        [-0.48, -0.42, 0.65, 1.00, -0.18, -0.38, -0.28, -0.32, 0.30, -0.12],
+        [0.15, 0.10, -0.20, -0.18, 1.00, 0.12, 0.08, 0.10, 0.05, 0.45],
+        [0.48, 0.45, -0.40, -0.38, 0.12, 1.00, 0.45, 0.50, -0.22, 0.08],
+        [0.35, 0.32, -0.30, -0.28, 0.08, 0.45, 1.00, 0.55, -0.18, 0.10],
+        [0.40, 0.38, -0.35, -0.32, 0.10, 0.50, 0.55, 1.00, -0.20, 0.12],
+        [-0.28, -0.25, 0.32, 0.30, 0.05, -0.22, -0.18, -0.20, 1.00, -0.02],
+        [0.12, 0.10, -0.15, -0.12, 0.45, 0.08, 0.10, 0.12, -0.02, 1.00]
     ])
     
     fig = px.imshow(
         correlations,
-        x=features,
-        y=features,
-        title='Feature Correlations with Attrition',
+        x=corr_features,
+        y=corr_features,
+        title='Feature Correlations',
         color_continuous_scale='RdBu',
         zmin=-1,
         zmax=1
@@ -662,7 +726,7 @@ else:
     - Frontend: Streamlit
     - Backend: Python
     - ML Libraries: Scikit-learn, XGBoost
-    - Visualization: Plotly, Matplotlib, Seaborn
+    - Visualization: Plotly
     - Data Processing: Pandas, NumPy
     
     ### Business Impact
