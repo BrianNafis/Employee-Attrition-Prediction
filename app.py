@@ -6,14 +6,23 @@ A Streamlit application for predicting employee turnover and providing HR insigh
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import warnings
 import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import warnings
+
+# Suppress warnings
 warnings.filterwarnings('ignore')
+
+# Try to import matplotlib and seaborn with fallback
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    st.warning("Matplotlib or Seaborn not available. Some visualizations will be limited.")
 
 # Page configuration
 st.set_page_config(
@@ -422,8 +431,6 @@ elif page == "Batch Prediction":
 
 elif page == "EDA and Insights":
     st.markdown('<p class="main-header">Exploratory Data Analysis and Insights</p>', unsafe_allow_html=True)
-    
-    df_sample = load_sample_data()
     
     st.markdown("## Key Business Insights")
     
