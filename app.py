@@ -7,32 +7,40 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import warnings
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-# Try to import optional libraries
+# Suppress warnings
+warnings.filterwarnings('ignore')
+
+# Try to import optional visualization libraries
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+
+try:
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
+try:
+    import seaborn as sns
+    SEABORN_AVAILABLE = True
+except ImportError:
+    SEABORN_AVAILABLE = False
+
 try:
     import joblib
     JOBLIB_AVAILABLE = True
 except ImportError:
     JOBLIB_AVAILABLE = False
-    st.warning("Joblib not available. Using mock predictions.")
 
 try:
     from sklearn.ensemble import RandomForestClassifier
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-
-try:
-    import xgboost as xgb
-    XGBOOST_AVAILABLE = True
-except ImportError:
-    XGBOOST_AVAILABLE = False
-
-# Suppress warnings
-warnings.filterwarnings('ignore')
 
 # Page configuration
 st.set_page_config(
@@ -119,9 +127,7 @@ def load_model():
 def create_mock_model():
     """Create a simple mock model for demonstration"""
     if SKLEARN_AVAILABLE:
-        from sklearn.ensemble import RandomForestClassifier
         model = RandomForestClassifier(n_estimators=10, random_state=42)
-        # Create dummy training data
         X_dummy = np.random.rand(100, 12)
         y_dummy = np.random.randint(0, 2, 100)
         model.fit(X_dummy, y_dummy)
@@ -444,20 +450,22 @@ elif page == "Batch Prediction":
                 
                 st.markdown("### Risk Distribution")
                 
-                risk_counts = pd.DataFrame({
+                risk_data = {
                     'Risk Level': ['High Risk', 'Low Risk'],
                     'Count': [high_risk_count, low_risk_count]
-                })
+                }
                 
-                fig = px.pie(
-                    risk_counts, 
-                    values='Count', 
-                    names='Risk Level',
-                    title='Attrition Risk Distribution',
-                    color='Risk Level',
-                    color_discrete_map={'High Risk': '#dc3545', 'Low Risk': '#28a745'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                st.write(f"**High Risk:** {high_risk_count} employees ({high_risk_count/len(df)*100:.1f}%)")
+                st.write(f"**Low Risk:** {low_risk_count} employees ({low_risk_count/len(df)*100:.1f}%)")
+                
+                # Simple bar chart using st.bar_chart if matplotlib not available
+                if MATPLOTLIB_AVAILABLE:
+                    fig, ax = plt.subplots()
+                    ax.bar(['High Risk', 'Low Risk'], [high_risk_count, low_risk_count], 
+                           color=['#dc3545', '#28a745'])
+                    ax.set_ylabel('Number of Employees')
+                    ax.set_title('Attrition Risk Distribution')
+                    st.pyplot(fig)
                 
                 st.markdown("### Detailed Results")
                 st.dataframe(
@@ -529,91 +537,68 @@ elif page == "EDA and Insights":
     st.markdown("## Feature Importance Analysis")
     
     # Create sample feature importance for demo
-    features = ['Psychological_Exhaustion', 'Job_Satisfaction', 'Physical_Stress', 
-                'Work_Live_Balance', 'MonthlySalary', 'Environment_Satisfaction', 
-                'OverTime', 'Recognition', 'Job_Opportunities', 'Years_Experience']
+    features = ['Psychological Exhaustion', 'Job Satisfaction', 'Physical Stress', 
+                'Work Life Balance', 'Monthly Salary', 'Environment Satisfaction', 
+                'Overtime', 'Recognition', 'Job Opportunities', 'Years Experience']
     
-    importance = [0.18, 0.15, 0.14, 0.12, 0.10, 0.09, 0.08, 0.07, 0.04, 0.03]
+    importance = [18, 15, 14, 12, 10, 9, 8, 7, 4, 3]
     
-    feature_importance = pd.DataFrame({
-        'Feature': features,
-        'Importance': importance
-    }).sort_values('Importance', ascending=False)
-    
-    fig = px.bar(
-        feature_importance,
-        x='Importance',
-        y='Feature',
-        orientation='h',
-        title='Top Features Impacting Attrition',
-        color='Importance',
-        color_continuous_scale='RdYlGn_r'
-    )
-    fig.update_layout(height=500)
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("## Correlation Heatmap")
-    
-    corr_features = ['Job_Satisfaction', 'Work_Live_Balance', 'Psychological_Exhaustion', 
-                     'Physical_Stress', 'MonthlySalary', 'Environment_Satisfaction', 
-                     'Job_Opportunities', 'Recognition', 'OverTime', 'Years_Experience']
-    
-    np.random.seed(42)
-    correlations = np.array([
-        [1.00, 0.45, -0.52, -0.48, 0.15, 0.48, 0.35, 0.40, -0.28, 0.12],
-        [0.45, 1.00, -0.45, -0.42, 0.10, 0.45, 0.32, 0.38, -0.25, 0.10],
-        [-0.52, -0.45, 1.00, 0.65, -0.20, -0.40, -0.30, -0.35, 0.32, -0.15],
-        [-0.48, -0.42, 0.65, 1.00, -0.18, -0.38, -0.28, -0.32, 0.30, -0.12],
-        [0.15, 0.10, -0.20, -0.18, 1.00, 0.12, 0.08, 0.10, 0.05, 0.45],
-        [0.48, 0.45, -0.40, -0.38, 0.12, 1.00, 0.45, 0.50, -0.22, 0.08],
-        [0.35, 0.32, -0.30, -0.28, 0.08, 0.45, 1.00, 0.55, -0.18, 0.10],
-        [0.40, 0.38, -0.35, -0.32, 0.10, 0.50, 0.55, 1.00, -0.20, 0.12],
-        [-0.28, -0.25, 0.32, 0.30, 0.05, -0.22, -0.18, -0.20, 1.00, -0.02],
-        [0.12, 0.10, -0.15, -0.12, 0.45, 0.08, 0.10, 0.12, -0.02, 1.00]
-    ])
-    
-    fig = px.imshow(
-        correlations,
-        x=corr_features,
-        y=corr_features,
-        title='Feature Correlations',
-        color_continuous_scale='RdBu',
-        zmin=-1,
-        zmax=1
-    )
-    fig.update_layout(height=600)
-    st.plotly_chart(fig, use_container_width=True)
+    if MATPLOTLIB_AVAILABLE:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bars = ax.barh(features, importance, color='steelblue')
+        ax.set_xlabel('Importance (%)')
+        ax.set_title('Top Features Impacting Attrition')
+        
+        # Add value labels on bars
+        for bar, imp in zip(bars, importance):
+            ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2, 
+                   f'{imp}%', va='center')
+        
+        st.pyplot(fig)
+    else:
+        # Simple table if matplotlib not available
+        importance_df = pd.DataFrame({'Feature': features, 'Importance (%)': importance})
+        st.dataframe(importance_df)
     
     st.markdown("## Risk Profile by Employee Segment")
     
-    profiles = pd.DataFrame({
-        'Segment': ['High Stress', 'Low Satisfaction', 'Poor WLB', 'High Overtime', 'Low Risk'],
-        'Attrition Risk (%)': [78, 72, 68, 65, 15],
-        'Count': [245, 312, 198, 267, 890]
-    })
+    segments = ['High Stress', 'Low Satisfaction', 'Poor WLB', 'High Overtime', 'Low Risk']
+    risks = [78, 72, 68, 65, 15]
+    counts = [245, 312, 198, 267, 890]
     
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=('Attrition Risk by Segment', 'Segment Size'),
-        specs=[[{'type': 'bar'}, {'type': 'pie'}]]
-    )
+    col_a, col_b = st.columns(2)
     
-    fig.add_trace(
-        go.Bar(x=profiles['Segment'], y=profiles['Attrition Risk (%)'], 
-               marker_color=['#dc3545', '#fd7e14', '#ffc107', '#ffc107', '#28a745']),
-        row=1, col=1
-    )
+    with col_a:
+        st.markdown("**Attrition Risk by Segment**")
+        if MATPLOTLIB_AVAILABLE:
+            fig, ax = plt.subplots(figsize=(8, 5))
+            colors = ['#dc3545', '#fd7e14', '#ffc107', '#ffc107', '#28a745']
+            bars = ax.bar(segments, risks, color=colors)
+            ax.set_ylabel('Attrition Risk (%)')
+            ax.set_ylim(0, 100)
+            
+            # Add value labels
+            for bar, risk in zip(bars, risks):
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2, 
+                       f'{risk}%', ha='center', va='bottom')
+            
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            risk_df = pd.DataFrame({'Segment': segments, 'Risk (%)': risks})
+            st.dataframe(risk_df)
     
-    fig.add_trace(
-        go.Pie(labels=profiles['Segment'], values=profiles['Count']),
-        row=1, col=2
-    )
-    
-    fig.update_layout(height=500, title_text="Employee Risk Segmentation")
-    fig.update_xaxes(title_text="Employee Segment", row=1, col=1)
-    fig.update_yaxes(title_text="Attrition Risk (%)", row=1, col=1)
-    
-    st.plotly_chart(fig, use_container_width=True)
+    with col_b:
+        st.markdown("**Segment Size Distribution**")
+        if MATPLOTLIB_AVAILABLE:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            ax.pie(counts, labels=segments, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            st.pyplot(fig)
+        else:
+            size_df = pd.DataFrame({'Segment': segments, 'Count': counts})
+            st.dataframe(size_df)
     
     st.markdown("## Actionable Recommendations for HR")
     
@@ -726,7 +711,6 @@ else:
     - Frontend: Streamlit
     - Backend: Python
     - ML Libraries: Scikit-learn, XGBoost
-    - Visualization: Plotly
     - Data Processing: Pandas, NumPy
     
     ### Business Impact
