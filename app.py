@@ -45,7 +45,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+#CSS
 st.markdown("""
 <style>
     .main-header {
