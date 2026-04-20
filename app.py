@@ -664,10 +664,7 @@ elif page == "EDA and Insights":
         - Retention rate by team or department
         """)
 
-# ============================================================================
-# PAGE 4: ABOUT
-# ============================================================================
-
+#PAGE 4: ABOUT
 else:
     st.markdown('<p class="main-header">About This Project</p>', unsafe_allow_html=True)
     
