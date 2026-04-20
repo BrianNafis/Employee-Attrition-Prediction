@@ -84,10 +84,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# SIDEBAR - Navigation
-# ============================================================================
-
+#SIDEBAR - Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Go to",
