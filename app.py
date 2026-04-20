@@ -1,8 +1,3 @@
-"""
-Employee Attrition Prediction App
-A Streamlit application for predicting employee turnover and providing HR insights
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
