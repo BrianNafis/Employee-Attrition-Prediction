@@ -377,9 +377,8 @@ if page == "Single Prediction":
             if recognition <= 2:
                 st.info("Recognition: Implement employee recognition program, celebrate achievements")
 
-# ============================================================================
-# PAGE 2: BATCH PREDICTION
-# ============================================================================
+=
+#PAGE 2: BATCH PREDICTION
 
 elif page == "Batch Prediction":
     st.markdown('<p class="main-header">Batch Prediction</p>', unsafe_allow_html=True)
