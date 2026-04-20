@@ -148,10 +148,8 @@ if model is None:
     if model is not None:
         st.info("Using demo model. Train a real model for better predictions.")
 
-# ============================================================================
-# PREDICTION FUNCTION
-# ============================================================================
 
+#PREDICTION FUNCTION
 def predict_attrition(input_data, model):
     """Make prediction using the model"""
     if model is None:
