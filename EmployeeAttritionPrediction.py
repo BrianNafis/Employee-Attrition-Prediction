@@ -260,7 +260,7 @@ print(f"Sisa data setelah hapus duplikat: {df_clean.shape}")
 
 """Handling Outlier"""
 
-# 1. Manual Capping / Winsorization for Numeric Features in df_clean (if applicable, based on scaled range)
+# 1. Manual Capping
 # Note: These capping rules are for unscaled data. If data is already scaled (0-4), these might not have an effect.
 # Since we're applying this to df_clean (which is a copy of df_train), and df_train is already scaled, these might be redundant or require adjustment if not already applied earlier.
 # df_clean['Age'] = df_clean['Age'].apply(lambda x: 65 if x > 65 else x)
