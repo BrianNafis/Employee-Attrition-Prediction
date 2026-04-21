@@ -174,10 +174,8 @@ def predict_attrition(input_data, model):
         probability = model.predict_proba(input_data)[0]
         return prediction, probability
 
-# ============================================================================
-# PAGE 1: SINGLE PREDICTION
-# ============================================================================
 
+# PAGE 1: SINGLE PREDICTION
 if page == "Single Prediction":
     st.markdown('<p class="main-header">Employee Attrition Predictor</p>', unsafe_allow_html=True)
     st.markdown("Predict whether an employee is likely to leave the company based on their profile.")
