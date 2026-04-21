@@ -516,7 +516,7 @@ elif page == "EDA and Insights":
     
     st.markdown("## Feature Importance Analysis")
     
-    # Create sample feature importance for demo
+    # Create sample feature importance for demo.
     features = ['Psychological Exhaustion', 'Job Satisfaction', 'Physical Stress', 
                 'Work Life Balance', 'Monthly Salary', 'Environment Satisfaction', 
                 'Overtime', 'Recognition', 'Job Opportunities', 'Years Experience']
