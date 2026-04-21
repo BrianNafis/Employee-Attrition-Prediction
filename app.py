@@ -478,10 +478,7 @@ elif page == "Batch Prediction":
             sample_data = load_sample_data()
             st.dataframe(sample_data)
 
-# ============================================================================
 # PAGE 3: EDA AND INSIGHTS
-# ============================================================================
-
 elif page == "EDA and Insights":
     st.markdown('<p class="main-header">Exploratory Data Analysis and Insights</p>', unsafe_allow_html=True)
     
