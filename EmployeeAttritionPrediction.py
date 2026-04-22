@@ -521,7 +521,7 @@ final_importance = pd.DataFrame({
 plt.figure(figsize=(10, 8))
 sns.set_style("whitegrid")
 
-# Menggunakan palette 'magma' yang memberikan gradasi warna dari gelap ke terang
+# Menggunakan palette 'magma' yang memberikan gradasi warna dari gelap ke terangg
 plot = sns.barplot(
     x='Kepentingan',
     y='Faktor',
