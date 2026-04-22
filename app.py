@@ -490,7 +490,7 @@ elif page == "EDA and Insights":
                 <ul>
                     <li><strong>Psychological Exhaustion</strong> - Highest correlation with attrition</li>
                     <li><strong>Physical Stress</strong> - Strong positive correlation</li>
-                    <li><strong>Overtime</strong> - Regular overtime increases risk</li>
+                    <li><strong>Overtime</strong> - Regular overtime increases Risk</li>
                     <li><strong>Job Dissatisfaction</strong> - Low satisfaction equals high risk</li>
                 </ul>
             </div>
