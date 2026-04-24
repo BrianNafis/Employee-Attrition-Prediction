@@ -72,7 +72,7 @@ st.markdown("""
         text-align: center;
     }
     .risk-high {
-        color: #dc3545;
+        color: #dc3546;
         font-weight: bold;
     }
     .risk-low {
