@@ -98,7 +98,7 @@ st.sidebar.info(
 )
 
 
-#LOAD MODEL AND DATA
+#LOAD MODEL AND DATA ...
 @st.cache_resource
 def load_model():
     """Load the trained model"""
