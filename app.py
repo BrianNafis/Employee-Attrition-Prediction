@@ -476,7 +476,7 @@ elif page == "Batch Prediction":
 
 # PAGE 3: EDA AND INSIGHTS
 elif page == "EDA and Insights":
-    st.markdown('<p class="main-header">Exploratory Data Analysis and Insights</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Exploratory Data Analysis and Insights </p>', unsafe_allow_html=True)
     
     st.markdown("## Key Business Insights")
     
