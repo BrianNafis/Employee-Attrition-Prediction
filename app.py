@@ -68,7 +68,7 @@ st.markdown("""
         background-color: #ffffff;
         padding: 1rem;
         border-radius: 10px;
-        box-shadow: 0 3px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 3px 5px rgba(0,0,0,0.1);
         text-align: center;
     }
     .risk-high {
